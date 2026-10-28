@@ -34,10 +34,10 @@ Open `.env` and paste your key after `MODEL_API_KEY=`. Leave everything else as 
 Still in `agent/`:
 
 ```bash
-./helper setup       # installs the OpenAI Python SDK in .venv, copies the case's 21 documents, checks your key
+./helper setup       # installs the SDKs in .venv (OpenAI + MCP), copies the case's 21 documents, checks your key
 ```
 
-Your agent talks to the Meta Model API with the official OpenAI Python SDK, which `./helper setup` installs into `agent/.venv` (it needs the internet for that, once). `./helper` always uses that environment, so there's nothing to activate.
+Your agent talks to the Meta Model API with the official OpenAI Python SDK, which `./helper setup` installs into `agent/.venv` (it needs the internet for that, once), along with the MCP SDK that serves the agent's tools. `./helper` always uses that environment, so there's nothing to activate.
 
 If everything looks good, this should read:
 
@@ -115,7 +115,7 @@ You won't write any plumbing today: the repo ships with it. Paths are relative t
 
 | Already built | Path | What it does |
 |---|---|---|
-| **Tools** | `agent_kit/tools/` | The actions the model can take, one file per tool: draft a checklist, read documents (quotes checked against the page), record facts, file the memo. Session 2 adds verification tools. Your loop uses `tools.definitions()` and `tools.run()`. |
+| **Tools** | `mcp_server/tools/` | The actions the model can take, served as an MCP server, one file per tool: draft a checklist, read documents (quotes checked against the page), record facts, file the memo. Session 2 adds verification tools. Your loop uses `mcp_client.definitions()` and `mcp_client.run()`. |
 | **Case record** | `agent_kit/case_record.py` | Where your agent writes down its work: its checklist, the facts it proves, any flags or evidence requests, and the final memo. It refuses any quote that isn't on the page. |
 | **The agent's playbook** | `legal_agent/system_instructions.md` | How to work any case: draft a checklist, plan, investigate, file a memo. Your agent sends it as its system prompt every turn. |
 | **Progress** | `agent_kit/progress.py` | Saves your agent's progress after every turn, so you can watch it in the console, and picks a stopped run back up where it left off. |
@@ -164,7 +164,7 @@ Paste these into Muse Code (your tab from 1.6) one at a time, and let each one f
 **Prompt 1: plan it first.** No code yet.
 
 ```text
-Read legal_agent/loop.py and the primitives in agent_kit (start with agent_kit/progress.py and agent_kit/tools/__init__.py). In simple language, propose a brief plan for building an agentic loop with them: what happens in one turn, and when the loop stops. No code yet.
+Read legal_agent/loop.py and the primitives in agent_kit (start with agent_kit/progress.py and agent_kit/mcp_client.py; the tools themselves live in mcp_server/). In simple language, propose a brief plan for building an agentic loop with them: what happens in one turn, and when the loop stops. No code yet.
 ```
 
 Check the plan against 2.3: the model picks every tool, your code runs it and sends back the result, the run is saved every turn, and it stops when the memo is filed or the turns run out. If something's off, say so now: one sentence fixes a plan, and code takes much longer to untangle.
@@ -172,7 +172,7 @@ Check the plan against 2.3: the model picks every tool, your code runs it and se
 **Prompt 2: build the loop.**
 
 ```text
-Build the agent loop in legal_agent/loop.py. In run_agent, start a run with new_run, give the model legal_agent/system_instructions.md as its instructions and the case's objective.md as its first message (settings.case_dir finds the case), and offer it the tools from tools.definitions(). Each turn, ask the model what to do next, run the one tool it picks with tools.run(), send the result back, and save progress. Stop when a tool result's status says the run is over, or at the turn limit; on the last turn, tell the model to file its memo. If the model call still fails after retries, save the run as paused. Then make resume_run pick a stopped run back up: resume() gives you the message to send the model.
+Build the agent loop in legal_agent/loop.py. In run_agent, start a run with new_run, give the model legal_agent/system_instructions.md as its instructions and the case's objective.md as its first message (settings.case_dir finds the case), and offer it the tools from mcp_client.definitions(). Each turn, ask the model what to do next, run the one tool it picks with mcp_client.run(), send the result back, and save progress. Stop when a tool result's status says the run is over, or at the turn limit; on the last turn, tell the model to file its memo. If the model call still fails after retries, save the run as paused. Then make resume_run pick a stopped run back up: resume() gives you the message to send the model.
 ```
 
 You're done when Muse Code reports back and, in `agent/`, `git status` shows `legal_agent/loop.py` as the only file changed. The real test is your first run, next. Both prompts usually take 5 to 10 minutes.
@@ -247,6 +247,9 @@ It keeps your `.env`, your Python environment, and your runs, and replaces every
 
 > [!WARNING]
 > Use this only before you start building the checks in Session 2: it also resets `verification/`, so it would undo your checks. During Session 2, catch up with 3.10 instead.
+
+> [!NOTE]
+> On this branch, the snapshot is the pre-MCP agent: swapping it in replaces the MCP tool server with the original in-process tools. It behaves the same from the console, but it isn't the MCP setup anymore.
 
 ## 3. Session 2: Make the agent trustworthy
 
