@@ -12,7 +12,7 @@ import importlib
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from . import Context
+    from mcp_server.context import Context
 
 MAX_TRIES = 3
 

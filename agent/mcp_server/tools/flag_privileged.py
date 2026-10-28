@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from . import Context
+    from mcp_server.context import Context
 
 DEFINITION = {
     "type": "function",

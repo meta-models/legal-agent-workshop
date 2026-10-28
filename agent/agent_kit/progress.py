@@ -3,7 +3,7 @@
     run_id = new_run(root, instructions=..., objective=...)
     messages = [{"role": "user", "content": objective}]
     # each turn: response = client.responses.create(...); messages += response.output;
-    #            result = tools.run(...) for the tool the model picked; append its function_call_output
+    #            result = mcp_client.run(...) for the tool the model picked; append its function_call_output
     save_progress(root, run_id, messages, response)                     # end of every turn
     save_progress(root, run_id, messages, response, status="answered")  # the turn that ends the run
 
@@ -22,12 +22,9 @@ import shutil
 import time
 import uuid
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from .settings import model, verification_enabled
-
-if TYPE_CHECKING:
-    from openai import OpenAI
 
 CONTROL = "workspace/control.json"
 
@@ -182,14 +179,14 @@ BRANCH_MESSAGE = (
 )
 
 
-def branch(client: OpenAI, root: Path, run_id: str) -> str:
+def branch(root: Path, run_id: str) -> str:
     """Start a new run with verification on that continues `run_id` from its first set_checklist call.
 
-    The new run keeps the conversation up to that call, runs the call again (so the
-    checklist check refuses a weak checklist with feedback), and stops as "paused":
-    resume it to let the agent continue. Returns the new run's id.
+    The new run keeps the conversation up to that call, runs the call again through the
+    MCP tool server (so the checklist check refuses a weak checklist with feedback),
+    and stops as "paused": resume it to let the agent continue. Returns the new run's id.
     """
-    from . import tools
+    from . import mcp_client
 
     root = Path(root)
     messages = load_progress(root, run_id)["messages"]
@@ -211,7 +208,7 @@ def branch(client: OpenAI, root: Path, run_id: str) -> str:
         verification=True,
     )
     call = messages[index]
-    result = tools.run(client, root, new_id, call)
+    result = mcp_client.run(root, new_id, call)
     if (
         result.get("status") == "paused"
     ):  # a check that is not built yet: nothing to continue

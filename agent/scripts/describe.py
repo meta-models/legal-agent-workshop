@@ -15,8 +15,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from agent_kit import tools  # noqa: E402
 from agent_kit.settings import case_dir, verification_enabled  # noqa: E402
+from mcp_server import tools  # noqa: E402
 
 
 def _has_ground_truth() -> bool:

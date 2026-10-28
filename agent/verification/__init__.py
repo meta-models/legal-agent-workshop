@@ -1,6 +1,6 @@
 """The verification layer (VERIFICATION=on): every check, in one place. Each file has one
 entry point, run_verification(ctx, work) -> {"passed": bool, "feedback": ..., ...}. The
-tools in agent_kit/tools/ call them at fixed points, so the agent cannot skip them;
+tools in mcp_server/tools/ call them at fixed points, so the agent cannot skip them;
 ./helper verify runs them on a saved run. See VERIFICATION.md.
 
 - verify_checklist.py          you build: the checklist against the case's ground truth (set_checklist)

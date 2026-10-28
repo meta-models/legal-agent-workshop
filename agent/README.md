@@ -21,7 +21,7 @@ Documents are read through the Files API, up to 4 at a time in parallel.
 ./helper setup                         # reset the inbox to the case's documents
 CASE_DIR=../cases/other ./helper setup # work on a different case
 ./helper test [--verification]         # offline tests; never call the live API
-./helper run --turns 30                # run the agent
+./helper run --turns 30                # run the agent (starts the MCP tool server on its own)
 ./helper run --resume RUN_ID --turns 15
 ./helper review RUN_ID --approve | --reject --notes "..." | --answer R1 --notes "..."
 ./helper verify RUN_ID --memo | --checklist   # run the verification checks on a finished run
@@ -33,8 +33,9 @@ CASE_DIR=../cases/other ./helper setup # work on a different case
 
 - `legal_agent/` — the agent you build: the agentic loop (`loop.py`), and `system_instructions.md`, how it works any case (sent as its system prompt every turn; edit it to change how the agent works).
 - `verification/` — the verification layer (`VERIFICATION=on`), every check in one place: one file per check, each with `run_verification(ctx, work)`: `verify_checklist.py` and `verify_memo.py` you build, `verify_claims.py` and `verify_evidence_request.py` are pre-built. See `VERIFICATION.md`; escalation and resume in `ESCALATION_RULES.md`.
+- `mcp_server/` — the agent's tools as an MCP server over streamable HTTP (`./helper mcp-server`; the loop starts it on its own): `tools/` — one file per tool: what the model sees and what happens when it calls it;
 - `agent_kit/` — pre-built plumbing:
-  - `tools/` — one file per tool: what the model sees and what happens when it calls it; `tools.definitions()` and `tools.run()` are all the loop needs;
+  - `mcp_client.py` — the loop's view of the tools: `definitions()` and `run()` over the MCP server;
   - `progress.py` — a run on disk (`new_run`, `save_progress`, `load_progress`), `resume` after a person acts, and `branch`;
   - `case_record.py` — the simulated case-management system the agent acts on;
   - `document_text.py` — each document's saved text, the source of truth every quote is checked against;

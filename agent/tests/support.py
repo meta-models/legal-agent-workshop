@@ -1,14 +1,28 @@
-"""Shared helpers for the offline tests: a tiny case on disk and a scripted client."""
+"""Shared helpers for the offline tests: a tiny case on disk and a scripted client.
+
+Every scripted client also starts (once per test process) the real MCP tool server
+in a background thread, pointed at the current test's root and fake client: the loop
+under test talks to its tools over streamable HTTP, exactly as in production.
+"""
 
 from __future__ import annotations
 
+import atexit
 import json
 import os
 import shutil
+import socket
 import tempfile
+import threading
+import time
+import urllib.request
 from pathlib import Path
 
-from agent_kit.tools import check_signatures
+import uvicorn
+from agent_kit import mcp_client
+from mcp_server.context import state as server_state
+from mcp_server.server import create_asgi_app
+from mcp_server.tools import check_signatures
 from tests.fake_model import Scripted, ScriptedModel
 
 
@@ -183,6 +197,64 @@ def transcripts() -> dict:
     }
 
 
+_mcp_server: dict = {}  # the test tool server, started once: {"url", "server", "thread"}
+
+
+def serve_mcp(root: Path, fake: Scripted) -> str:
+    """Serve the MCP tools for this test's root and fake client; returns the server URL."""
+    server_state.root = Path(root)
+    server_state.test_client = fake.client
+    if "url" not in _mcp_server:
+        sock = socket.socket()
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+        sock.close()
+        server = uvicorn.Server(
+            uvicorn.Config(
+                create_asgi_app(), host="127.0.0.1", port=port, log_level="error"
+            )
+        )
+        thread = threading.Thread(target=server.run, daemon=True)
+        thread.start()
+        for _ in range(200):
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=1)
+                break
+            except OSError:
+                time.sleep(0.05)
+        else:
+            raise RuntimeError("the test MCP tool server did not start")
+        _mcp_server.update(
+            url=f"http://127.0.0.1:{port}/mcp", server=server, thread=thread
+        )
+        atexit.register(stop_mcp)
+    os.environ["MCP_SERVER_URL"] = _mcp_server["url"]
+    return _mcp_server["url"]
+
+
+def stop_mcp() -> None:
+    """Stop the test tool server (also runs at process exit)."""
+    server, thread = _mcp_server.get("server"), _mcp_server.get("thread")
+    if server is not None:
+        server.should_exit = True
+    if thread is not None:
+        thread.join(timeout=10)
+
+
+def mcp_tool(root: Path, run_id: str, name: str, args: dict) -> dict:
+    """Call one MCP tool the way the loop does (the test server answers)."""
+    return mcp_client.run(
+        root,
+        run_id,
+        {
+            "type": "function_call",
+            "name": name,
+            "arguments": json.dumps(args),
+            "call_id": "test-1",
+        },
+    )
+
+
 def scripted(root: Path, actions: list, unsupported=None) -> Scripted:
     """A scripted OpenAI client (fake.client) that plays `actions` (name, args) in order, one per agent turn.
 
@@ -199,9 +271,11 @@ def scripted(root: Path, actions: list, unsupported=None) -> Scripted:
     def planner(request: dict):
         return queue.pop(0) if queue else None
 
-    return Scripted(
+    fake = Scripted(
         ScriptedModel(transcripts(), planner, sam_outputs, unsupported=unsupported)
     )
+    serve_mcp(root, fake)
+    return fake
 
 
 def agent_requests(fake: Scripted) -> list:

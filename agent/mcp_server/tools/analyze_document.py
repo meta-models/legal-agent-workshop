@@ -19,11 +19,11 @@ from typing import Any, TYPE_CHECKING
 import openai
 from openai import OpenAI
 
-from .. import document_text
-from ..document_text import DocumentError
+from agent_kit import document_text
+from agent_kit.document_text import DocumentError
 
 if TYPE_CHECKING:
-    from . import Context
+    from mcp_server.context import Context
 
 MAX_DOCS_PER_CALL = 4
 

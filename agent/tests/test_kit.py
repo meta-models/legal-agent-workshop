@@ -1,19 +1,23 @@
-"""Pre-built kit: document text, the case record, progress, and the tools. These pass from
-the start and must keep passing."""
+"""Pre-built kit: document text, the case record, progress, and the MCP tools. These
+pass from the start and must keep passing. Every tool call goes over streamable HTTP
+to the test tool server (tests/support.py), exactly as in production."""
 
 from __future__ import annotations
 
+import importlib
 import json
+import os
+import socket
 import threading
 import time
 import unittest
 from unittest import mock
 
-from agent_kit import case_record, document_text, tools
+from agent_kit import case_record, document_text, mcp_client
 from agent_kit.case_record import CaseError, CaseRecord
 from agent_kit.progress import load_progress, new_run, resume, save_progress
-from agent_kit.tools import check_signatures
-from agent_kit.tools.analyze_document import analyze
+from mcp_server.context import Context
+from mcp_server.tools import BASE_TOOLS, check_signatures
 from tests import support
 from tests.fake_model import Refused
 
@@ -38,7 +42,9 @@ class KitTest(unittest.TestCase):
         )
 
     def read(self, ids: list, request: str = "status") -> dict:
-        return analyze(self.client, self.root, ids, request)
+        return support.mcp_tool(
+            self.root, self.run_id, "analyze_document", {"document_ids": ids, "request": request}
+        )
 
     def case(self) -> CaseRecord:
         case = CaseRecord(self.root, self.run_id)
@@ -46,8 +52,8 @@ class KitTest(unittest.TestCase):
         return case
 
     def tool(self, name: str, args: dict | None = None, run_id: str = "") -> dict:
-        return tools.run(
-            self.client, self.root, run_id or self.run_id, call(name, args)
+        return mcp_client.run(
+            self.root, run_id or self.run_id, call(name, args)
         )
 
     # ---- document text and reading --------------------------------------------------
@@ -112,8 +118,8 @@ class KitTest(unittest.TestCase):
         }
         self.assertTrue(by_id["DOC-REPORT"]["evidence"])
         self.assertIn("simulated outage", by_id["DOC-MEMO"]["note"])
-        with self.assertRaises(document_text.DocumentError):
-            self.read(["DOC-REPORT", "DOC-NOPE"])
+        result = self.read(["DOC-REPORT", "DOC-NOPE"])
+        self.assertIn("not in the inbox", result["error"])
 
     # ---- the case record -------------------------------------------------------------
     def test_record_fact_refuses_an_invented_quote_and_reports_progress(self) -> None:
@@ -218,7 +224,7 @@ class KitTest(unittest.TestCase):
         step = resume(self.root, self.run_id)
         self.assertEqual((None, "answered"), (step["message"], step["status"]))
 
-    # ---- the tools ------------------------------------------------------------------
+    # ---- the MCP tools ------------------------------------------------------------------
     def test_tools_run_and_errors_come_back_to_the_model(self) -> None:
         self.assertEqual({"plan": ["a"]}, self.tool("update_plan", {"plan": ["a"]}))
         self.assertIn("DOC-REPORT", str(self.tool("list_documents")))
@@ -229,16 +235,35 @@ class KitTest(unittest.TestCase):
         bad = dict(call("update_plan"), arguments="{not json")
         self.assertIn(
             "not valid JSON",
-            tools.run(self.client, self.root, self.run_id, bad)["error"],
+            mcp_client.run(self.root, self.run_id, bad)["error"],
         )
 
+    def test_a_spawned_server_serves_tools_from_any_root(self) -> None:
+        """ensure_server starts a real server subprocess that answers tool calls."""
+        sock = socket.socket()
+        sock.bind(("127.0.0.1", 0))
+        url = f"http://127.0.0.1:{sock.getsockname()[1]}/mcp"
+        sock.close()
+        os.environ["MCP_SERVER_URL"] = url
+        self.addCleanup(mcp_client._stop_server, url)
+        self.addCleanup(support.serve_mcp, self.root, self.fake)
+        with mock.patch.dict(os.environ, {"MODEL_API_KEY": "spawn-test-key"}):
+            result = self.tool("update_plan", {"plan": ["a"]})
+        self.assertEqual({"plan": ["a"]}, result)
+
+    def test_the_model_never_sees_the_internal_run_id(self) -> None:
+        for definition in mcp_client.definitions(self.root, self.run_id):
+            parameters = definition["parameters"]
+            self.assertNotIn("run_id", parameters["properties"])
+            self.assertNotIn("run_id", parameters.get("required", []))
+
     def test_base_tools_without_verification_and_three_more_with_it(self) -> None:
-        names = [t["name"] for t in tools.definitions(self.root, self.run_id)]
-        self.assertEqual(tools.BASE_TOOLS, names)
+        names = [t["name"] for t in mcp_client.definitions(self.root, self.run_id)]
+        self.assertEqual(BASE_TOOLS, names)
         verified = new_run(
             self.root, instructions="i", objective="o", verification=True
         )
-        names = [t["name"] for t in tools.definitions(self.root, verified)]
+        names = [t["name"] for t in mcp_client.definitions(self.root, verified)]
         self.assertEqual(
             ["flag_privileged", "request_evidence", "check_signatures"], names[6:]
         )
@@ -258,9 +283,16 @@ class KitTest(unittest.TestCase):
 
     def test_a_check_that_is_not_built_yet_pauses_the_run(self) -> None:
         run_id = new_run(self.root, instructions="i", objective="o", verification=True)
+        real_import = importlib.import_module
+
+        def no_check_module(name: str, *args: object, **kwargs: object):
+            if name == "verification.verify_checklist":
+                raise NotImplementedError("not implemented yet")
+            return real_import(name, *args, **kwargs)
+
         with mock.patch(
-            "agent_kit.tools.set_checklist.importlib.import_module",
-            side_effect=NotImplementedError("not implemented yet"),
+            "mcp_server.tools.set_checklist.importlib.import_module",
+            side_effect=no_check_module,
         ):
             result = self.tool(
                 "set_checklist", {"items": support.CHECKLIST_ITEMS}, run_id
@@ -285,8 +317,8 @@ class KitTest(unittest.TestCase):
         )
 
     # ---- pre-built checks ------------------------------------------------------------
-    def ctx(self) -> tools.Context:
-        return tools.Context(
+    def ctx(self) -> Context:
+        return Context(
             self.client,
             self.root,
             self.run_id,
@@ -309,7 +341,7 @@ class KitTest(unittest.TestCase):
                 {"item": "ready_statement", "reason": "off topic"}
             ],
         )
-        ctx = tools.Context(
+        ctx = Context(
             fake.client,
             self.root,
             self.run_id,

@@ -24,6 +24,16 @@ def verification_enabled() -> bool:
     return os.environ.get("VERIFICATION", "off").strip().lower() in _TRUE
 
 
+def mcp_port() -> int:
+    """The MCP tool server's port (MCP_PORT, default 8000)."""
+    return int(os.environ.get("MCP_PORT") or 8000)
+
+
+def mcp_server_url() -> str:
+    """The MCP tool server endpoint (MCP_SERVER_URL, default http://127.0.0.1:<port>/mcp)."""
+    return os.environ.get("MCP_SERVER_URL") or f"http://127.0.0.1:{mcp_port()}/mcp"
+
+
 def case_dir(root: Path) -> Path:
     """The case folder (CASE_DIR, absolute or relative to the agent folder): objective.md and documents/."""
     value = os.environ.get("CASE_DIR", "").strip()

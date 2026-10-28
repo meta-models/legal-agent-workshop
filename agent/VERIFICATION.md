@@ -1,6 +1,6 @@
 # Verification layer
 
-On for runs started with `VERIFICATION=on` in `.env`. Every check is one file in `verification/` with one entry point, `run_verification(ctx, work) -> {"passed": bool, "feedback": ...}`. The tools in `agent_kit/tools/` call them at fixed points, so the agent cannot skip them. You build two; the rest is pre-built.
+On for runs started with `VERIFICATION=on` in `.env`. Every check is one file in `verification/` with one entry point, `run_verification(ctx, work) -> {"passed": bool, "feedback": ...}`. The tools in `mcp_server/tools/` call them at fixed points, so the agent cannot skip them. You build two; the rest is pre-built.
 
 | When | File | Check | Built by | On failure |
 |---|---|---|---|---|

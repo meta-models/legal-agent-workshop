@@ -1,6 +1,7 @@
 """The verification layer (VERIFICATION=on): the checks you build in agent/verification/
-(verify_checklist.py, verify_memo.py), and the tools running them inside a real run of the agent loop,
-with escalation, resume, attorney sign-off, ./helper verify, and continuing from a checklist."""
+(verify_checklist.py, verify_memo.py), and the MCP tools running them inside a real run of
+the agent loop, with escalation, resume, attorney sign-off, ./helper verify, and
+continuing from a checklist."""
 
 from __future__ import annotations
 
@@ -8,10 +9,10 @@ import json
 import os
 import unittest
 
-from agent_kit import tools
 from agent_kit.case_record import CaseRecord
 from agent_kit.progress import branch, new_run
 from agent_kit.settings import verification_enabled
+from mcp_server.context import Context
 from scripts import verify
 from tests import support
 
@@ -170,9 +171,9 @@ SKIP = unittest.skipUnless(
 GROUND_TRUTH_TEXT = [g["question"] for g in support.GROUND_TRUTH]
 
 
-def context(root, client, run_id: str = "") -> tools.Context:
+def context(root, client, run_id: str = "") -> Context:
     run_id = run_id or new_run(root, instructions="i", objective="o")
-    return tools.Context(client, root, run_id, CaseRecord(root, run_id), True)
+    return Context(client, root, run_id, CaseRecord(root, run_id), True)
 
 
 @SKIP
@@ -238,9 +239,12 @@ class MemoRulesTest(unittest.TestCase):
         return result["feedback"]
 
     def read(self, ids: list) -> None:
-        from agent_kit.tools.analyze_document import analyze
-
-        analyze(self.fake.client, self.root, ids, "x")
+        support.mcp_tool(
+            self.root,
+            self.ctx.run_id,
+            "analyze_document",
+            {"document_ids": ids, "request": "x"},
+        )
 
     def test_unsettled_items_and_unmatched_citations_are_problems(self) -> None:
         found = self.problems(EARLY_MEMO[1])
@@ -536,7 +540,7 @@ class ContinueFromSessionOneTest(unittest.TestCase):
     def test_branch_continues_from_the_checklist_with_verification_on(self) -> None:
         run_id = self._session_one()
         fake = support.scripted(self.root, [support.CHECKLIST, support.PLAN, READ_ALL])
-        new_id = branch(fake.client, self.root, run_id)
+        new_id = branch(self.root, run_id)
         self.assertNotEqual(run_id, new_id)
         progress = support.progress(self.root, new_id)
         refused = json.loads(progress["messages"][-1]["output"])

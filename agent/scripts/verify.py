@@ -22,19 +22,19 @@ sys.path.append(
     str(ROOT)
 )  # after the test runner's own paths, so tests import the same modules
 
-from agent_kit import tools  # noqa: E402
 from agent_kit.case_record import CaseRecord  # noqa: E402
 from agent_kit.client import make_client, MissingKeyError  # noqa: E402
 from agent_kit.progress import now  # noqa: E402
-from agent_kit.tools.set_checklist import normalize_result  # noqa: E402
+from mcp_server.context import Context  # noqa: E402
+from mcp_server.tools.set_checklist import normalize_result  # noqa: E402
 from verification import verify_claims  # noqa: E402
 
 
-def context(client, root: Path, run_id: str) -> tools.Context:
-    return tools.Context(client, root, run_id, CaseRecord(root, run_id), True)
+def context(client, root: Path, run_id: str) -> Context:
+    return Context(client, root, run_id, CaseRecord(root, run_id), True)
 
 
-def verify_memo(ctx: tools.Context) -> dict:
+def verify_memo(ctx: Context) -> dict:
     filed = ctx.case.data.get("memo")
     if not filed:
         raise RuntimeError(f"{ctx.run_id} has no memo to verify")
@@ -54,7 +54,7 @@ def verify_memo(ctx: tools.Context) -> dict:
     }
 
 
-def verify_checklist(ctx: tools.Context) -> dict:
+def verify_checklist(ctx: Context) -> dict:
     checklist = ctx.case.data["checklist"]
     if not checklist:
         raise RuntimeError(f"{ctx.run_id} has no checklist to verify")

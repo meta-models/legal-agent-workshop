@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 from .request_evidence import escalate
 
 if TYPE_CHECKING:
-    from . import Context
+    from mcp_server.context import Context
 
 MAX_REFUSALS = 3
 

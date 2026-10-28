@@ -18,7 +18,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from agent_kit.client import make_client, MissingKeyError  # noqa: E402
 from agent_kit.progress import branch  # noqa: E402
 
 
@@ -32,8 +31,8 @@ def main() -> None:
         with contextlib.redirect_stdout(
             sys.stderr
         ):  # stdout carries only the JSON result
-            new_id = branch(make_client(), ROOT, args.run_id)
-    except (MissingKeyError, RuntimeError, FileNotFoundError) as error:
+            new_id = branch(ROOT, args.run_id)
+    except (RuntimeError, FileNotFoundError) as error:
         sys.exit(str(error))
     print(json.dumps({"run_id": new_id, "branched_from": args.run_id}, indent=2))
     print(f"Continue it with: ./helper run --resume {new_id}", file=sys.stderr)

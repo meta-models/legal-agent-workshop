@@ -53,6 +53,10 @@ case "$COMMAND" in
     load_env
     "$PYTHON" scripts/branch.py "$@"
     ;;
+  mcp-server)
+    load_env
+    "$PYTHON" -m mcp_server --root . "$@"
+    ;;
   test)
     load_env
     if [[ "${1:-}" == "--verification" ]]; then export VERIFICATION=on; else export VERIFICATION=off; fi
@@ -65,6 +69,7 @@ Usage: ./helper COMMAND
   setup                                  create .venv, copy the case's documents, check MODEL_API_KEY
   test [--verification]                  offline tests (no API calls)
   run [--turns N] [--resume RUN_ID]      run the agent, or continue a run
+  mcp-server [--port P]                  run the MCP tool server (run starts it on its own)
   verify RUN_ID --memo | --checklist     run the verification checks on a finished run
   branch RUN_ID                          continue a run from its checklist with verification on
   review RUN_ID --approve | --reject --notes "..." | --answer R1 --notes "..."

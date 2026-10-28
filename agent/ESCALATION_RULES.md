@@ -1,6 +1,6 @@
 # Escalation
 
-When a run stops for a person, what the person sees, and how the run resumes. All pre-built: the tools in `agent_kit/tools/` open the requests and `agent_kit/progress.py` resumes; whether an escalation is allowed is decided by the checks in `VERIFICATION.md`.
+When a run stops for a person, what the person sees, and how the run resumes. All pre-built: the tools in `mcp_server/tools/` open the requests and `agent_kit/progress.py` resumes; whether an escalation is allowed is decided by the checks in `VERIFICATION.md`.
 
 ## When a run escalates (verification on)
 

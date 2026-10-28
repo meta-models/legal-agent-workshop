@@ -23,11 +23,11 @@ from typing import cast, TYPE_CHECKING
 from openai import OpenAI
 from openai.types.responses import Response
 
-from .. import document_text
-from ..settings import sam_model
+from agent_kit import document_text
+from agent_kit.settings import sam_model
 
 if TYPE_CHECKING:
-    from . import Context
+    from mcp_server.context import Context
 
 VERDICTS = ("consistent", "inconsistent", "unclear", "unsigned")
 
