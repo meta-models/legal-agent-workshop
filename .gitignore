@@ -1,2 +1,13 @@
 **/__pycache__/
 *.pyc
+
+# AI coding assistants: local settings, state and memory never belong in the repo
+.claude/
+.muse/
+CLAUDE.md
+AGENTS.md
+MUSE.md
+.mcp.json
+
+# pip leftovers from an interrupted setup
+agent/pip-*/
