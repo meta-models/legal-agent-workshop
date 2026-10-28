@@ -2,6 +2,8 @@
 
 Two working sessions. Participants clone this repository and launch Muse Code from `agent/` only; `cases/`, `world/`, and `solutions/` stay outside Muse Code's workspace. First you build a general legal agent; then you point it at a case.
 
+> Note: this branch implements the agent's tools as MCP servers; everything else is the same as `main`.
+
 - **Session 1 — Build the agent:** the agentic loop, in plain OpenAI Python SDK code, on a pre-built kit (one file per tool, Files API document reading, a case-management system with quote-checked facts). The agent drafts a checklist, plans, investigates, and ends with an unverified memo.
 - **Session 2 — Make it trustworthy:** first verify the Session 1 memo and checklist and see what they miss (`./helper verify`). Then build the two checks of the verification layer (the checklist against the case's ground truth, and the memo rules), which the kit runs outside the agent's control, and continue the Session 1 run from its checklist with verification on (`./helper branch`): refusals, escalation, release of new evidence, resume, and attorney sign-off.
 
@@ -30,12 +32,3 @@ From `agent/`, run `muse`. Your first message, and again after any restart or ne
 - `world/` — the simulated outside world: withheld follow-up documents and `release.py`.
 - `solutions/` — `01_session1/` and `02_session2/` snapshots.
 - `ui/` — the Agent Console: start runs, watch each turn, see the agent's checklist and how each item is proven, release evidence, sign off. Pre-built; outside Muse Code's workspace.
-
-## Facilitator commands
-
-```bash
-python3 world/release.py                 # after a run reaches needs_input
-cd agent && ./helper verify RUN_ID --memo        # Session 2: what the Session 1 memo misses
-cd agent && ./helper verify RUN_ID --checklist   # Session 2: what the Session 1 checklist misses
-cd agent && ./helper branch RUN_ID               # Session 2: continue from the checklist, verification on
-```
