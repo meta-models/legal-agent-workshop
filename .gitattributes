@@ -1,0 +1,4 @@
+# Shell scripts and .env files must keep LF endings, even with core.autocrlf=true on Windows.
+helper text eol=lf
+*.sh text eol=lf
+.env.example text eol=lf

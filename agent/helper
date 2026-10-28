@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PYTHONUTF8=1  # UTF-8 output on Windows consoles and pipes
 
 # The agent's own Python: ./helper setup creates .venv here and installs requirements.txt.
 if [[ -z "${PYTHON:-}" ]]; then
-  if [[ -x .venv/bin/python ]]; then PYTHON=.venv/bin/python; else PYTHON=python3; fi
+  if [[ -x .venv/bin/python ]]; then PYTHON=.venv/bin/python
+  elif [[ -x .venv/Scripts/python.exe ]]; then PYTHON=.venv/Scripts/python.exe  # Windows venv (Git Bash)
+  else PYTHON=python3; fi
 fi
 COMMAND="${1:-help}"
 shift || true

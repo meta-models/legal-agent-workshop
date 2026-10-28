@@ -6,7 +6,7 @@ Your workshop handbook, keep it open while you work.
 
 ### 1.1 Before you arrive
 
-- **A macOS or Linux laptop.** That's where Muse Code runs. On Windows, you'll need WSL (Windows Subsystem for Linux).
+- **A macOS or Linux laptop.** That's where Muse Code runs. On Windows, use WSL (Windows Subsystem for Linux), or run the agent and console natively: see "Windows (native, no WSL)" in `README.md` (`python helper.py` in place of `./helper`).
 - **git and Python 3.9 or newer.** On a Mac, `xcode-select --install` gets you both. On Linux, use your package manager (include `venv`: on Debian and Ubuntu that's `python3-venv`).
 - **Muse Code**, installed by following <https://dev.meta.ai/docs/muse-code>.
 - **Your Meta Model API key.** It needs access to `muse-spark-1.3` and `sam-3.1`.

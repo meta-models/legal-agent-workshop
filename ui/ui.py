@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import threading
@@ -34,11 +35,22 @@ from urllib.parse import parse_qs, urlparse
 CONSOLE = Path(__file__).resolve().parent
 DEFAULT_WORKSHOP = CONSOLE.parent  # ui/ sits at the root of legal-agent-workshop
 MAX_TURNS = 200
+# Windows: text in UTF-8 everywhere (files, pipes, and every ./helper command we start).
+os.environ.setdefault("PYTHONUTF8", "1")
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+TEXT = {"text": True, "encoding": "utf-8", "errors": "replace"}
+
+
+def helper(*args: str) -> list:
+    """The argv for a ./helper command; on Windows, the Python port (agent/helper.py)."""
+    if os.name == "nt":
+        return [sys.executable, "helper.py", *args]
+    return ["./helper", *args]
 
 
 def read_json(path: Path):
     try:
-        return json.loads(path.read_text())
+        return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
 
@@ -336,7 +348,7 @@ class Jobs:
     ) -> dict:
         before = {p.name for p in runs.glob("run-*")} if runs.exists() else set()
         process = subprocess.Popen(
-            argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+            argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **TEXT
         )
         job = {
             "id": len(self.items) + 1,
@@ -433,7 +445,7 @@ class Console:
         env = {}
         path = self.agent / ".env"
         if path.is_file():
-            for line in path.read_text().splitlines():
+            for line in path.read_text(encoding="utf-8-sig").splitlines():
                 if "=" in line and not line.strip().startswith("#"):
                     k, v = line.split("=", 1)
                     env[k.strip()] = v.strip()
@@ -467,7 +479,7 @@ class Console:
             title = next(
                 (
                     line[2:].strip()
-                    for line in objective.read_text(errors="replace").splitlines()
+                    for line in objective.read_text(encoding="utf-8", errors="replace").splitlines()
                     if line.startswith("# ")
                 ),
                 case.name,
@@ -486,7 +498,7 @@ class Console:
         if case_id not in {c["id"] for c in self.cases()}:
             raise FileNotFoundError(case_id)
         path = self.agent / ".env"
-        lines = path.read_text().splitlines() if path.is_file() else []
+        lines = path.read_text(encoding="utf-8-sig").splitlines() if path.is_file() else []
         setting = f"CASE_DIR=../cases/{case_id}"
         for i, line in enumerate(lines):
             if line.split("=", 1)[0].strip() == "CASE_DIR":
@@ -495,9 +507,9 @@ class Console:
         else:
             lines.append(setting)
         tmp = path.with_suffix(".tmp")
-        tmp.write_text("\n".join(lines) + "\n")
+        tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
         tmp.replace(path)
-        self._cmd(["./helper", "reset"], self.agent)
+        self._cmd(helper("reset"), self.agent)
         return self.info()
 
     def info(self) -> dict:
@@ -519,7 +531,7 @@ class Console:
 
     def _agent_ready(self) -> bool:
         loop = self.agent / "legal_agent/loop.py"
-        return loop.is_file() and "is not implemented yet" not in loop.read_text()
+        return loop.is_file() and "is not implemented yet" not in loop.read_text(encoding="utf-8")
 
     # ---- reads ----
     def list_runs(self) -> list:
@@ -563,7 +575,7 @@ class Console:
             "case": case,
             "events": events,
             "metrics": metrics(events, case),
-            "instructions": instructions.read_text()[:400]
+            "instructions": instructions.read_text(encoding="utf-8")[:400]
             if instructions.is_file()
             else "",
             "job": job,
@@ -571,7 +583,7 @@ class Console:
 
     def page_image(self, doc: str, page: str) -> bytes:
         name = f"{doc}-p{int(page)}.png"
-        if "/" in doc or ".." in doc:
+        if "/" in doc or "\\" in doc or ".." in doc:
             raise FileNotFoundError(doc)
         for folder in (
             self.agent / "workspace/inbox/pages",
@@ -613,7 +625,7 @@ class Console:
 
     def describe(self) -> dict:
         out = subprocess.run(
-            ["./helper", "describe"], cwd=self.agent, capture_output=True, text=True
+            helper("describe"), cwd=self.agent, capture_output=True, **TEXT
         )
         if out.returncode:
             raise RuntimeError(
@@ -669,13 +681,13 @@ class Console:
         if self.jobs.any_running():
             raise RuntimeError("an agent run is already in progress")
         turns = max(1, min(int(turns), MAX_TURNS))
-        argv = ["./helper", "run", "--turns", str(turns)]
+        argv = helper("run", "--turns", str(turns))
         if run_id:
             argv += ["--resume", run_id]
         return self.jobs.start(kind, argv, self.agent, self.runs, run_id)
 
     def _cmd(self, argv: list, cwd: Path) -> dict:
-        out = subprocess.run(argv, cwd=cwd, capture_output=True, text=True)
+        out = subprocess.run(argv, cwd=cwd, capture_output=True, **TEXT)
         if out.returncode:
             raise RuntimeError((out.stderr or out.stdout).strip()[-800:])
         return {"message": (out.stdout + out.stderr).strip()[-800:]}
@@ -695,7 +707,7 @@ class Console:
         self, run_id: str, decision: str, notes: str, request_id: str = ""
     ) -> dict:
         self._run_dir(run_id)
-        argv = ["./helper", "review", run_id]
+        argv = helper("review", run_id)
         if decision == "answer":
             argv += ["--answer", request_id]
         else:
@@ -710,10 +722,10 @@ class Console:
         if what not in ("memo", "checklist"):
             raise RuntimeError("verify the memo or the checklist")
         out = subprocess.run(
-            ["./helper", "verify", run_id, f"--{what}", "--json"],
+            helper("verify", run_id, f"--{what}", "--json"),
             cwd=self.agent,
             capture_output=True,
-            text=True,
+            **TEXT,
         )
         if out.returncode:
             raise RuntimeError((out.stderr or out.stdout).strip()[-800:])
@@ -725,10 +737,10 @@ class Console:
         if self.jobs.any_running():
             raise RuntimeError("wait for the running agent to stop")
         out = subprocess.run(
-            ["./helper", "branch", run_id],
+            helper("branch", run_id),
             cwd=self.agent,
             capture_output=True,
-            text=True,
+            **TEXT,
         )
         if out.returncode:
             raise RuntimeError((out.stderr or out.stdout).strip()[-800:])
@@ -738,11 +750,11 @@ class Console:
         if self.jobs.any_running():
             raise RuntimeError("stop the running agent before resetting")
         return self._cmd(
-            ["./helper", "reset"] + (["--clear-runs"] if clear_runs else []), self.agent
+            helper("reset", *(["--clear-runs"] if clear_runs else [])), self.agent
         )
 
     def _run_dir(self, run_id: str) -> Path:
-        if "/" in run_id or ".." in run_id or not run_id.startswith("run-"):
+        if "/" in run_id or "\\" in run_id or ".." in run_id or not run_id.startswith("run-"):
             raise FileNotFoundError(run_id)
         run_dir = self.runs / run_id
         if not run_dir.is_dir():
@@ -892,6 +904,8 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--host", default="127.0.0.1")
     args = parser.parse_args()
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     workshop = args.workshop
     if workshop is None and (DEFAULT_WORKSHOP / "agent/helper").is_file():
         workshop = DEFAULT_WORKSHOP

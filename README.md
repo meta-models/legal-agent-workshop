@@ -17,6 +17,25 @@ cp .env.example .env      # add MODEL_API_KEY; CASE_DIR points at ../cases/north
 muse
 ```
 
+## Windows (native, no WSL)
+
+Use `python` and `python helper.py` wherever the handbook says `python3` and `./helper` (PowerShell or cmd):
+
+```powershell
+cd legal-agent-workshop\agent
+copy .env.example .env      # the key goes after MODEL_API_KEY= on its own line
+python helper.py setup
+python helper.py test
+cd ..
+python ui\ui.py             # http://127.0.0.1:8765 (add --port 8766 if 8765 is taken)
+```
+
+The console calls `helper.py` on Windows automatically. Use `helper.py`, not `./helper` from Git Bash: the bash script finds the Windows venv, but its model calls fail behind antivirus TLS scanning. `helper.py` runs everything in UTF-8 mode. It also trusts the Windows certificate store, so HTTPS still works behind antivirus or proxies that re-sign traffic (Norton, corporate proxies). Session 1 catch-up (handbook 2.7) without `rsync`:
+
+```powershell
+robocopy solutions\01_session1\agent agent /MIR /XD .venv workspace /XF .env helper.py /R:1 /W:1
+```
+
 ## Start Muse Code
 
 From `agent/`, run `muse`. Your first message, and again after any restart or new session, is the ground-rules prompt in `HANDBOOK.md`, section 1.7.
