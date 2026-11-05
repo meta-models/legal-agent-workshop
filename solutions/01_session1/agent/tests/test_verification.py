@@ -138,10 +138,14 @@ GOOD_MEMO = (
             ),
             cite("timing", "DOC-DRAFT", "Recommendation: NO-GO"),
             cite("seniority", "DOC-MINUTES", "Erik Lindgren, Engagement Partner"),
-            cite(
-                "signatures",
-                "DOC-CERT",
-                "I certify that all exit criteria have been satisfied",
+            # the placeholder signature check says "unclear", so the item cannot be proven
+            dict(
+                cite(
+                    "signatures",
+                    "DOC-CERT",
+                    "I certify that all exit criteria have been satisfied",
+                ),
+                status="not_proven",
             ),
             cite("counterevidence", "DOC-REPORT", "Overall status is green"),
         ],
@@ -440,7 +444,7 @@ class VerifiedRunTest(unittest.TestCase):
         self.assertEqual(
             ["memo", "memo", "claims"], [c["check"] for c in case.data["memo_checks"]]
         )
-        self.assertEqual("consistent", case.data["signature_checks"][0]["verdict"])
+        self.assertEqual("unclear", case.data["signature_checks"][0]["verdict"])
         case.review_memo(True, "approved")
         done = self.resume_run(
             root=self.root, run_id=result["run_id"], client=fake.client, turns=5

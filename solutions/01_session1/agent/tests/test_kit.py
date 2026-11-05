@@ -269,6 +269,22 @@ class KitTest(unittest.TestCase):
             ("not implemented yet", "paused"), (result["error"], result["status"])
         )
 
+    def test_submit_memo_accepts_findings_sent_as_a_json_string(self) -> None:
+        run_id = new_run(self.root, instructions="i", objective="o", verification=False)
+        finding = {"item": "x", "status": "not_proven", "summary": "s", "citations": []}
+        memo = {"conclusion": "c", "findings": json.dumps([finding]), "gaps": ["a", "b"]}
+        self.assertTrue(self.tool("submit_memo", memo, run_id)["filed"])
+        filed = CaseRecord(self.root, run_id).data["memo"]
+        self.assertEqual(([finding], "a\nb"), (filed["findings"], filed["gaps"]))
+
+    def test_submit_memo_refuses_findings_that_are_not_an_array(self) -> None:
+        run_id = new_run(self.root, instructions="i", objective="o", verification=True)
+        broken = '[{"item": "x", "summary": "he said "ready""}]'  # unescaped quotes
+        memo = {"conclusion": "c", "findings": broken, "gaps": ""}
+        result = self.tool("submit_memo", memo, run_id)
+        self.assertIn("not as a string", result["error"])
+        self.assertEqual(0, CaseRecord(self.root, run_id).memo_refusals())
+
     def test_check_signatures_is_a_placeholder_that_names_its_reference(self) -> None:
         run_id = new_run(self.root, instructions="i", objective="o", verification=True)
         args = {"document_id": "DOC-REF", "page": 1, "signer": "Dana Okafor"}
@@ -278,7 +294,7 @@ class KitTest(unittest.TestCase):
         )
         other = dict(args, reference_document_id="DOC-MEMO", reference_page=1)
         result = self.tool("check_signatures", other, run_id)
-        self.assertEqual("consistent", result["verdict"])
+        self.assertEqual("unclear", result["verdict"])
         check = CaseRecord(self.root, run_id).data["signature_checks"][0]
         self.assertEqual(
             {"document_id": "DOC-MEMO", "page": 1, "boxes": []}, check["reference"]

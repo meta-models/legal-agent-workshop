@@ -17,7 +17,7 @@ It finds the workshop automatically (the folder that contains `ui/`). `--worksho
 
 ## Making a run easy to follow
 
-- **Tools Available** (left): the tools the model can call this session, with their parameters.
+- **Tools Available** (left): every tool, with its parameters. The three marked **verification on** (`flag_privileged`, `request_evidence`, `check_signatures`) are greyed out unless the selected run has verification on; with no run selected, the panel follows `VERIFICATION` in `agent/.env`.
 - **Case** (header): pick any folder under `cases/` that has an `objective.md`. Switching sets `CASE_DIR` in `agent/.env` and resets the inbox to that case's documents (runs are kept); it is disabled while the agent runs.
 - **The agent's assignment** (centre): the selected case's `objective.md` (its path is shown in the header), rendered as Markdown. Click the header to collapse it.
 - **Checklist** (right): the checklist the agent drafted, item by item: the question, what evidence settles it, its status (open / proven / escalated), each fact as it is recorded (document · page · quote), and the signature verdict on items that need one. With a ground-truth checklist, the header shows the coverage score and the feedback the agent got (the agent itself never sees the score).
@@ -38,5 +38,5 @@ It finds the workshop automatically (the folder that contains `ui/`). `--worksho
 1. Select the Session 1 run. **Verify the memo**: the memo rules and the claims check list what it misses. **Verify the checklist**: the coverage score and the feedback.
 2. **Continue from the checklist, verification on**: a new run starts with the Session 1 checklist refused with feedback. **Resume this run**: the agent revises the checklist, investigates, has an early memo refused, and escalates.
 3. Handoff card → **Release follow-up evidence** → **Resume this run**.
-4. The run reads the new documents, proves the open items, checks the certification's signature against a page the signer genuinely signed (`check_signatures` is a placeholder for now and reports it consistent), and files a memo that passes the memo rules and the claims check.
+4. The run reads the new documents, proves the open items, checks the certification's signature against a page the signer genuinely signed (`check_signatures` is a placeholder for now and reports it unclear, so the memo names the signature as a gap and the sign-off card shows a signature flag), and files a memo that passes the memo rules and the claims check.
 5. Sign-off card → **Approve** (or reject with notes, which sends it back to the agent). Compare with the Session 1 run.

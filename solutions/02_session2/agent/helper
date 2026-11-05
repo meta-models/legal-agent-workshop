@@ -12,10 +12,25 @@ load_env() {
   # CASE_DIR set in the environment wins over .env: CASE_DIR=../cases/other ./helper setup
   local case_dir="${CASE_DIR:-}"
   if [[ -f .env ]]; then
-    set -a
-    # shellcheck disable=SC1091
-    source .env
-    set +a
+    # Read KEY=VALUE lines as data, never run them as shell: API keys contain characters
+    # like | that a shell would treat as commands. Quotes around a value are optional.
+    local line key value kv='^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=(.*)$'
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      line="${line%$'\r'}"
+      [[ "$line" =~ $kv ]] || continue  # blank lines and comments
+      key="${BASH_REMATCH[1]}"
+      value="${BASH_REMATCH[2]}"
+      value="${value#"${value%%[![:space:]]*}"}"  # trim leading spaces
+      case "$value" in
+        \"*\") value="${value#\"}"; value="${value%\"}" ;;
+        \'*\') value="${value#\'}"; value="${value%\'}" ;;
+        *)
+          value="${value%%[[:space:]]#*}"  # drop a trailing " # comment"
+          value="${value%"${value##*[![:space:]]}"}"  # trim trailing spaces
+          ;;
+      esac
+      export "$key=$value"
+    done < .env
   fi
   if [[ -n "$case_dir" ]]; then export CASE_DIR="$case_dir"; fi
 }

@@ -6,7 +6,10 @@ The verdict is one of VERDICTS. Anything other than "consistent" becomes a signa
 flag the attorney reviews at sign-off, and the memo rules refuse a finding marked proven
 on that signature.
 
-PLACEHOLDER: reports every signature as consistent, so the end-to-end flow can be tested.
+PLACEHOLDER: compares nothing yet, so it reports every signature as "unclear": no item
+can be proven on a signature until the real check exists, and every check becomes a
+flag the attorney sees at sign-off.
+
 The real check (to be written): find the signature on each page image with SAM 3.1
 (segment, below), then show Muse Spark both pages with the boxes and ask whether the
 signatures are consistent (letter shapes, loops, slant, rhythm). It is a consistency
@@ -82,8 +85,8 @@ def run(ctx: Context, args: dict) -> dict:
     document_text.page_image(ctx.root, document_id, page)  # both pages must exist
     document_text.page_image(ctx.root, reference_id, reference_page)
     verdict, reason = (
-        "consistent",
-        "placeholder: every signature is reported as consistent",
+        "unclear",
+        "placeholder: signatures are not compared yet, so none can be confirmed",
     )
     ctx.case.add_signature_check(
         {

@@ -115,6 +115,7 @@
   .objective a { color:var(--blue); }
   .objective > p:last-child:not(.callout) { margin-top:14px; padding-top:10px; border-top:1px dashed var(--line); font-size:12.5px; color:var(--muted); }
   .tool { border-top:1px solid var(--line); padding:6px 0; font-size:12px; } .tool:first-child { border-top:0; } .tool code { font-weight:600; font-size:12.5px; } .tool .muted { margin-top:2px; }
+  .tool.off { opacity:.45; } .tool .badge { font-size:10.5px; padding:0 6px; margin-left:4px; }
   .saw { font-size:12.5px; } .saw .box { border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin:6px 0; background:#fafbfc; }
   .saw h3 { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:10px 0 4px; }
 </style>
@@ -291,8 +292,22 @@ async function loadBrief() {
   try {
     const b = await api("/api/describe"); window._brief = b;
     $("brief").innerHTML = renderMarkdown(b.objective);
-    $("tools").innerHTML = b.tools.map(t => `<div class="tool"><code>${esc(t.name)}</code><span class="muted">(${esc(t.parameters.join(", "))})</span><div class="muted">${esc(short(t.description, 150))}</div></div>`).join("");
+    window._toolsKey = null; renderTools();
   } catch (e) { $("brief").textContent = e.message; }
+}
+// The tools the selected run's model is offered: the verification tools are greyed out on a
+// run without verification. With no run selected, follow VERIFICATION in agent/.env (what a
+// new run would get).
+function renderTools() {
+  const b = window._brief; if (!b || !b.tools) return;
+  const on = detail && detail.state ? !!detail.state.verification : !!info.verification;
+  const key = window._briefKey + ":" + on;
+  if (window._toolsKey === key) return;
+  window._toolsKey = key;
+  $("tools").innerHTML = b.tools.map(t => {
+    const off = t.verification_only && !on;
+    return `<div class="tool${off ? " off" : ""}"${off ? ' title="Offered only to runs with verification on"' : ""}><code>${esc(t.name)}</code><span class="muted">(${esc(t.parameters.join(", "))})</span>${t.verification_only ? `<span class="badge">verification on</span>` : ""}<div class="muted">${esc(short(t.description, 150))}</div></div>`;
+  }).join("");
 }
 function select(id) { if (!id) return; selected = id; events = []; detail = null; window._open = new Set(); window._tlKey = null; window._lastHead = null; $("timeline").innerHTML = ""; poll(); }
 
@@ -451,7 +466,8 @@ function showTurn(n) {
   const w = (req && req.payload.saw) || null;
   let saw = "<div class='muted'>Not saved yet.</div>";
   if (w) {
-    const tools = ((window._brief || {}).tools || []).map(t => t.name);
+    const runOn = !!((detail || {}).state || {}).verification;
+    const tools = ((window._brief || {}).tools || []).filter(t => runOn || !t.verification_only).map(t => t.name);
     saw = `<div class="box"><b>Instructions</b>: ${esc(short((detail || {}).instructions || "", 220))}</div>
       <div class="box"><b>Conversation so far</b>: ${w.items} item(s) — ${Object.entries(w.counts || {}).map(([k, v]) => `${v} ${k}`).join(", ")}</div>
       ${w.newest_observation ? `<div class="box"><b>Newest observation</b> (result of the previous tool call):<pre>${esc(w.newest_observation)}</pre></div>` : (w.newest_message ? `<div class="box"><b>Newest message</b>:<pre>${esc(w.newest_message)}</pre></div>` : "")}
@@ -636,7 +652,7 @@ async function poll() {
     if (selected) {
       const d = await api(`/api/runs/${selected}`);
       detail = d;
-      for (const [name, render] of [["timeline", () => setEvents(d.events)], ["run panel", renderHead], ["cards", renderCards], ["sidebar", renderSide]]) {
+      for (const [name, render] of [["timeline", () => setEvents(d.events)], ["run panel", renderHead], ["cards", renderCards], ["sidebar", renderSide], ["tools", renderTools]]) {
         try { render(); } catch (e) { console.error(`console: ${name} failed to render`, e); }
       }
     }

@@ -5,12 +5,17 @@ Verification on: the memo rules (verification/verify_memo.py) run first, then th
 check (verification/verify_claims.py). A memo that fails is refused with the problems; after
 MAX_REFUSALS refused memos the run escalates to a person. A memo that passes both waits
 for attorney sign-off (awaiting_signoff).
+
+Models sometimes send findings (or a finding's citations) as a JSON string instead of an
+array. A string that parses is accepted; one that doesn't is refused with an error that
+says so, which does not count as a refused memo.
 """
 
 from __future__ import annotations
 
 import importlib
-from typing import TYPE_CHECKING
+import json
+from typing import Any, TYPE_CHECKING
 
 from .request_evidence import escalate
 
@@ -49,7 +54,8 @@ DEFINITION = {
     "type": "function",
     "name": "submit_memo",
     "description": "File the case memo: the answer to the question in 2-3 sentences, one finding per checklist item "
-    "in one sentence citing its 1-3 strongest recorded facts, and the remaining gaps as a short list.",
+    "in one sentence citing its 1-3 strongest recorded facts, and the remaining gaps as a short list. "
+    "findings is an array of objects, not a string.",
     "parameters": {
         "type": "object",
         "additionalProperties": False,
@@ -66,8 +72,8 @@ DEFINITION = {
 def run(ctx: Context, args: dict) -> dict:
     memo = {
         "conclusion": str(args.get("conclusion", "")),
-        "findings": args.get("findings") or [],
-        "gaps": str(args.get("gaps", "")),
+        "findings": _findings(args.get("findings")),
+        "gaps": _text(args.get("gaps")),
     }
     if not ctx.verification:
         ctx.case.file_memo(memo, "unverified")
@@ -102,3 +108,35 @@ def run(ctx: Context, args: dict) -> dict:
         return {"error": "memo refused", "check": check, "problems": problems}
     ctx.case.file_memo(memo, "awaiting_signoff")
     return {"filed": True, "memo": "awaiting_signoff", "status": "awaiting_signoff"}
+
+
+def _findings(value: Any) -> list:
+    """The findings as a list of objects, parsing a JSON string if the model sent one."""
+    findings = _parse(value, "findings") or []
+    if not isinstance(findings, list) or not all(isinstance(f, dict) for f in findings):
+        raise ValueError(
+            "findings must be an array of objects with item, status, summary and citations"
+        )
+    for finding in findings:
+        if isinstance(finding.get("citations"), str):
+            finding["citations"] = _parse(finding["citations"], "citations")
+    return findings
+
+
+def _parse(value: Any, name: str) -> Any:
+    if not isinstance(value, str):
+        return value
+    try:
+        return json.loads(value)
+    except ValueError as error:
+        raise ValueError(
+            f"{name} arrived as a string that is not valid JSON ({error}). "
+            f"Send {name} as an array of objects, not as a string."
+        ) from None
+
+
+def _text(value: Any) -> str:
+    """gaps as text: a list (which models sometimes send) becomes one line per gap."""
+    if isinstance(value, list):
+        return "\n".join(str(v) for v in value)
+    return "" if value is None else str(value)

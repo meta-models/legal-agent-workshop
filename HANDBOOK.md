@@ -229,7 +229,7 @@ The memo is filed as **unverified**, and for good reason. Every quote is real (t
 - **Evidence from a document the agent shouldn't cite.** One document is a privileged memo from Northbridge's own lawyers. Nothing stopped the agent reading it, or quoting it.
 - **A checklist nobody checked.** The agent decided what needed proving, and then proved it. If its checklist missed a question, so did the memo.
 
-Model judgment, with no code checking it: that's what Session 2 fixes.
+All three are model judgment, with no code checking it. Session 2 puts code checks on the signature and the checklist. The privileged memo gets a partial fix: the agent gets a way to flag it, and once it's flagged, code keeps it out of the facts and the memo. Spotting it in the first place is still the agent's call.
 
 </details>
 
@@ -451,7 +451,7 @@ Now let your agent redo the work with the checks in place. You don't start over:
 You're done when the run's status says **done**.
 
 > [!NOTE]
-> `check_signatures` is a stand-in for now: it reports every signature as consistent. The real check compares a signature with a page the signer genuinely signed, and anything else becomes a flag on the sign-off card.
+> `check_signatures` is a stand-in for now: it doesn't compare anything yet, so it reports every signature as **unclear**. That means your agent can't prove an item on a signature: the memo rules send it back to mark the item not proven and name it as a gap, and the check shows up as a flag on the sign-off card. The real check compares a signature with a page the signer genuinely signed.
 
 **If it goes sideways:**
 

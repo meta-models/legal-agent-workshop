@@ -58,8 +58,11 @@ def main() -> None:
                         "parameters": list(
                             tools.DEFINITIONS[name]["parameters"]["properties"]
                         ),
+                        # offered only to runs with verification on; the console greys
+                        # these out for runs without it
+                        "verification_only": name in tools.VERIFIER_TOOLS,
                     }
-                    for name in tools.names(verification)
+                    for name in tools.names(True)
                 ],
                 "built": {
                     path: built(ROOT / path)

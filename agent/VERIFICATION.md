@@ -11,7 +11,7 @@ On for runs started with `VERIFICATION=on` in `.env`. Every check is one file in
 | 3 refused memos | | | Pre-built | Escalated to a person |
 | The memo passes | | Pause for attorney sign-off | Pre-built | Rejected: the notes go back to the agent |
 
-Also pre-built with verification on: `flag_privileged`, `request_evidence`, and `check_signatures`, which compares a signature with a reference page the agent names (a placeholder for now that reports every signature as consistent; anything else becomes a flag for the attorney); a flagged document cannot be read again. Always: at most 3 facts per checklist item and 3 citations per finding.
+Also pre-built with verification on: `flag_privileged`, `request_evidence`, and `check_signatures`, which compares a signature with a reference page the agent names (a placeholder for now that compares nothing and reports every signature as unclear, so no item can be proven on a signature yet; anything other than consistent becomes a flag for the attorney); a flagged document cannot be read again. Always: at most 3 facts per checklist item and 3 citations per finding.
 
 The ground truth stays outside this folder; `load_reference(root)` at the top of `verify_checklist.py` (pre-built) reads it. Your feedback goes to the agent as written, so it must point to what is missing without quoting, paraphrasing, or counting the ground-truth items.
 

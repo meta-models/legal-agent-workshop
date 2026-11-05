@@ -1,4 +1,4 @@
-# Solutions (facilitators only)
+# Solutions
 
 Complete snapshots of `agent/` at each checkpoint. Outside Muse Code's workspace. `01_session1` runs with `VERIFICATION=off`, `02_session2` with `VERIFICATION=on`.
 

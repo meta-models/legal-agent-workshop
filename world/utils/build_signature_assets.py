@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the signature assets for the workshop case (facilitator utility; run once).
+"""Build the signature assets for the workshop case (one-off utility; run once).
 
 1. NBI-00000151: Test Strategy approval page carrying Marcus Thibodeaux's genuine
    handwritten signature (the reference signature).

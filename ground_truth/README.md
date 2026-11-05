@@ -1,4 +1,4 @@
-# Ground truth (facilitators only)
+# Ground truth
 
 What the checklist check compares the agent's checklist against. It lives outside `agent/` and outside the case, so neither Muse Code nor the agent's model sees it.
 

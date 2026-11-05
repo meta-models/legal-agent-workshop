@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build page images (facilitator utility).
+"""Build page images (one-off utility).
 
 Page images (100 dpi PNG) for every document, next to the documents in a
 pages/ folder: the review platform's page renders. check_signatures sends
